@@ -1,7 +1,7 @@
 <p align="center">
-  <img src="https://img.shields.io/packagist/v/giorgigrdzelidze/laravel-rsge.svg?style=flat-square" alt="Latest Version">
-  <img src="https://img.shields.io/packagist/php-v/giorgigrdzelidze/laravel-rsge.svg?style=flat-square" alt="PHP Version">
-  <img src="https://img.shields.io/packagist/l/giorgigrdzelidze/laravel-rsge.svg?style=flat-square" alt="License">
+  <img src="https://img.shields.io/packagist/v/giorgigrdzelidze/laravel-rsge?include_prereleases&style=flat-square" alt="Latest Version">
+  <img src="https://img.shields.io/packagist/dependency-v/giorgigrdzelidze/laravel-rsge/php?style=flat-square" alt="PHP Version">
+  <img src="https://img.shields.io/github/license/GiorgiGrdzelidze/laravel-rsge?style=flat-square" alt="License">
   <a href="https://github.com/GiorgiGrdzelidze/laravel-rsge/actions/workflows/ci.yml"><img src="https://github.com/GiorgiGrdzelidze/laravel-rsge/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
 </p>
 
