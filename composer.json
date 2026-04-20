@@ -1,0 +1,50 @@
+{
+    "name": "giorgigrdzelidze/laravel-rsge",
+    "description": "Laravel 12 client for Georgian Revenue Service (rs.ge) e-services: cash register Z-reports today, waybills and invoices next.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["laravel", "rs.ge", "revenue-service", "georgia", "tax", "soap", "z-report", "cash-register", "fiscal"],
+    "authors": [
+        { "name": "Giorgi Grdzelidze", "email": "grdzelog@gmail.com" }
+    ],
+    "require": {
+        "php": "^8.2",
+        "ext-simplexml": "*",
+        "ext-soap": "*",
+        "illuminate/contracts": "^12.0 || ^13.0",
+        "illuminate/support": "^12.0 || ^13.0",
+        "psr/log": "^3.0"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.18",
+        "mockery/mockery": "^1.6",
+        "orchestra/testbench": "^10.0 || ^11.0",
+        "phpstan/phpstan": "^2.0",
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "psr-4": { "Rsge\\Laravel\\": "src/" }
+    },
+    "autoload-dev": {
+        "psr-4": { "Rsge\\Laravel\\Tests\\": "tests/" }
+    },
+    "extra": {
+        "laravel": {
+            "providers": ["Rsge\\Laravel\\RsgeServiceProvider"],
+            "aliases": { "Rsge": "Rsge\\Laravel\\Facades\\Rsge" }
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "stan": "vendor/bin/phpstan analyse --memory-limit=1G",
+        "pint": "vendor/bin/pint",
+        "pint:test": "vendor/bin/pint --test",
+        "qa": ["@pint:test", "@stan", "@test"]
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": { "php-http/discovery": true }
+    }
+}
