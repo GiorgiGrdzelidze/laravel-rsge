@@ -10,3 +10,4 @@
 phpstan.neon.dist export-ignore
 phpunit.xml     export-ignore
 pint.json       export-ignore
+/phpunit.live.xml.dist export-ignore

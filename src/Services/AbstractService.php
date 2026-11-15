@@ -30,7 +30,7 @@ abstract class AbstractService implements Service
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    protected function withAuth(array $payload): array
+    protected function withAuth(#[\SensitiveParameter] array $payload): array
     {
         return array_merge($this->credentials->toArray(), $payload);
     }
@@ -47,7 +47,7 @@ abstract class AbstractService implements Service
      * @throws RsgeTransportException
      * @throws RsgeException
      */
-    protected function invoke(string $method, array $parameters): array|object
+    protected function invoke(string $method, #[\SensitiveParameter] array $parameters): array|object
     {
         $response = $this->transport->call($method, $parameters);
 

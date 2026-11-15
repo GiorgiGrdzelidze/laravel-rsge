@@ -1,14 +1,15 @@
 {
     "name": "giorgigrdzelidze/laravel-rsge",
-    "description": "Laravel 12 client for Georgian Revenue Service (rs.ge) e-services: cash register Z-reports today, waybills and invoices next.",
+    "description": "Laravel client for Georgian Revenue Service (rs.ge) e-services: cash register Z-reports and electronic waybills.",
     "type": "library",
     "license": "MIT",
-    "keywords": ["laravel", "rs.ge", "revenue-service", "georgia", "tax", "soap", "z-report", "cash-register", "fiscal"],
+    "keywords": ["laravel", "rs.ge", "revenue-service", "georgia", "tax", "soap", "z-report", "cash-register", "fiscal", "waybill"],
     "authors": [
         { "name": "Giorgi Grdzelidze", "email": "grdzelog@gmail.com" }
     ],
     "require": {
         "php": "^8.2",
+        "ext-mbstring": "*",
         "ext-simplexml": "*",
         "ext-soap": "*",
         "illuminate/contracts": "^12.0 || ^13.0",
@@ -36,6 +37,7 @@
     },
     "scripts": {
         "test": "vendor/bin/phpunit",
+        "test:live": "vendor/bin/phpunit -c phpunit.live.xml",
         "stan": "vendor/bin/phpstan analyse --memory-limit=1G",
         "pint": "vendor/bin/pint",
         "pint:test": "vendor/bin/pint --test",

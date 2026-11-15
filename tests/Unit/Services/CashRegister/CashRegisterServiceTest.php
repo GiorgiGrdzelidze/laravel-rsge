@@ -273,4 +273,24 @@ final class CashRegisterServiceTest extends TestCase
     {
         $this->assertSame('cash_register', $this->service->name());
     }
+
+    #[Test]
+    public function the_password_stays_out_of_the_stack_trace_of_a_refusal(): void
+    {
+        $before = ini_get('zend.exception_ignore_args');
+        ini_set('zend.exception_ignore_args', '0');
+        $service = new CashRegisterService($this->transport, new BasicCredentials('testuser', 'CASH-PASSWORD-3'));
+        $this->transport->push(['ResponseStatus' => false, 'Error' => ['ErrorCode' => 1, 'ErrorDescription' => 'wrong user']]);
+
+        try {
+            $service->getZReportDetails('2025-01-01', '2025-01-31');
+            $this->fail('nothing thrown');
+        } catch (RsgeAuthenticationException $e) {
+            $frames = array_values(array_filter($e->getTrace(), static fn (array $frame): bool => str_starts_with($frame['class'] ?? '', 'Rsge\\Laravel\\') && ! str_starts_with($frame['class'] ?? '', 'Rsge\\Laravel\\Tests\\')));
+            $this->assertNotSame([], $frames);
+            $this->assertStringNotContainsString('CASH-PASSWORD-3', print_r($frames, true).$e->getMessage().$e->getTraceAsString());
+        } finally {
+            ini_set('zend.exception_ignore_args', (string) $before);
+        }
+    }
 }

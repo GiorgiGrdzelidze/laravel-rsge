@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Live tests against rs.ge's TEST taxpayers. Not part of `composer test`.
+
+    Copy to phpunit.live.xml (git-ignored), fill the service users in, and run `composer test:live`.
+    The tests refuse to run for any taxpayer other than rs.ge's two published test codes.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.0/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+         failOnWarning="true"
+         failOnRisky="true"
+         failOnNotice="true"
+         beStrictAboutOutputDuringTests="true">
+    <testsuites>
+        <testsuite name="Live"><directory>tests/Live</directory></testsuite>
+    </testsuites>
+    <php>
+        <!-- a service user made on the portal of one of rs.ge's test taxpayers, e.g. SHOP_TEST:12345678910 -->
+        <env name="RSGE_LIVE_SU" value=""/>
+        <env name="RSGE_LIVE_SP" value=""/>
+        <!-- set to 1 to let the tests save, activate, close, cancel and delete their own test waybills -->
+        <env name="RSGE_LIVE_WRITES" value="0"/>
+    </php>
+</phpunit>

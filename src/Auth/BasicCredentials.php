@@ -13,6 +13,7 @@ final class BasicCredentials implements Credentials
 {
     public function __construct(
         public readonly string $username,
+        #[\SensitiveParameter]
         public readonly string $password,
     ) {}
 
