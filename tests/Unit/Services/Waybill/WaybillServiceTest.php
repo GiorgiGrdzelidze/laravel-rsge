@@ -346,6 +346,44 @@ final class WaybillServiceTest extends TestCase
     }
 
     #[Test]
+    public function a_cancel_with_a_comment_that_rs_ge_answers_with_nothing_done_is_made_again_without_it(): void
+    {
+        // a waybill that is with a carrier: rs.ge answers the call with a comment 0 and leaves it as it was
+        $this->transport->push((object) ['ref_waybill_vdResult' => 0]);
+        $this->transport->push((object) ['ref_waybillResult' => 1]);
+        $this->service->cancel(21, 'შეცდომით გამოიწერა');
+        $this->assertSame([
+            ['method' => 'ref_waybill_vd', 'parameters' => self::AUTH + ['waybill_id' => 21, 'comment' => 'შეცდომით გამოიწერა']],
+            ['method' => 'ref_waybill', 'parameters' => self::AUTH + ['waybill_id' => 21]],
+        ], $this->transport->calls());
+
+        // refused both ways: the refusal of the second call is the one that is told
+        $this->transport->push((object) ['ref_waybill_vdResult' => 0]);
+        $this->transport->push((object) ['ref_waybillResult' => -101]);
+        try {
+            $this->service->cancel(22, 'x');
+            $this->fail('a cancel rs.ge refused');
+        } catch (RsgeWaybillException $e) {
+            $this->assertSame(-101, $e->errorCode);
+            $this->assertStringContainsString("'ref_waybill'", $e->getMessage());
+        }
+
+        // a refusal of the call with a comment, or an answer that cannot be read, is not tried again
+        foreach ([-101, null, '', 'abc'] as $answer) {
+            $before = count($this->transport->calls());
+            $this->transport->push((object) ['ref_waybill_vdResult' => $answer]);
+            try {
+                $this->service->cancel(23, 'x');
+                $this->fail('a cancel rs.ge did not confirm: '.var_export($answer, true));
+            } catch (RsgeWaybillException $e) {
+                $this->assertSame($answer === -101 ? -101 : 0, $e->errorCode, var_export($answer, true));
+                $this->assertStringContainsString("'ref_waybill_vd'", $e->getMessage());
+            }
+            $this->assertCount($before + 1, $this->transport->calls(), var_export($answer, true));
+        }
+    }
+
+    #[Test]
     public function closing_deleting_and_cancelling_succeed_on_one_and_fail_on_anything_else(): void
     {
         $transport = $this->transport;
@@ -399,13 +437,13 @@ final class WaybillServiceTest extends TestCase
         $this->assertSame(['method' => 'get_waybills', 'parameters' => self::AUTH + [
             'itypes' => '2,3',
             'buyer_tin' => '',
-            'statuses' => '1,2,-2',
+            'statuses' => ',1,2,-2,',
             'car_number' => '',
             'create_date_s' => '2026-11-13T00:00:00',
             'create_date_e' => '2026-11-15T23:59:59',
             'driver_tin' => '',
             'waybill_number' => '',
-            's_user_ids' => '382402,700001',
+            's_user_ids' => ',382402,700001,',
             'comment' => 'R-2026-0007',
         ]], $this->transport->lastCall());
 

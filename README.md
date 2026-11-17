@@ -139,6 +139,30 @@ $waybills->close($saved->id);
 // a waybill that is only saved: $waybills->delete($saved->id);
 ```
 
+A waybill carried by a carrier company is handed to the carrier at once and never activated by the seller. The carrier puts its driver and car on it and starts the transport, and rs.ge gives the number then:
+
+```php
+use Rsge\Laravel\Services\Waybill\Enums\TransportType;
+use Rsge\Laravel\Services\Waybill\Enums\WaybillStatus;
+
+$saved = $waybills->save(new WaybillDraft(
+    type: WaybillType::WithTransport,
+    goods: [new GoodsLine(name: 'ფანქარი HB', quantity: 2, price: 1.5, amount: 3, barCode: '02345678')],
+    buyerTin: '206322102',
+    startAddress: 'თბილისი, ტესტის 1',
+    endAddress: 'ბათუმი, ტესტის 2',
+    transportType: TransportType::Carrier,
+    transporterTin: '12345678910',       // the carrier's tax id
+    handedToCarrier: true,
+));
+
+$waybill = $waybills->get($saved->id);
+$waybill->status();   // WaybillStatus::SentToTransporter until the carrier starts, then Active
+$waybill->number;     // null until then
+```
+
+While the waybill is with the carrier the seller can still cancel it. rs.ge takes no reason for that: `cancel($id, 'reason')` cancels it and the reason is dropped.
+
 Acting as another service user, for instance the member of staff who issues the waybill (rs.ge records it on the waybill as `S_USER_ID`):
 
 ```php
@@ -248,7 +272,8 @@ src/
 |---------|-------------|--------|
 | Cash Register Z-Report Details | `Get_Z_Report_Details` | ✅ Done |
 | Electronic waybills | `save_waybill`, `del_waybill`, `get_waybill`, `get_waybills`, `chek_service_user`, `get_service_users`, lists | ✅ Done, checked against rs.ge |
-| Electronic waybills | `send_waybill`, `send_waybil_vd`, `close_waybill`, `ref_waybill`, `get_print_pdf` | ✅ Done, live check pending |
+| Electronic waybills | `send_waybill`, `close_waybill`, `ref_waybill`, `ref_waybill_vd`, `get_print_pdf`, a waybill handed to a carrier (`STATUS` 8) | ✅ Done, checked against rs.ge |
+| Electronic waybills | `send_waybil_vd`, `close_waybill_vd` | ✅ Done, live check pending |
 | Cash Register Z-Report Sum | `Get_Z_Report_Sum` | 🔜 Planned |
 | Taxpayer Public Info | `GetTPInfoPublic` | 🔜 Planned |
 | Taxpayer Public Contacts | `GetTPInfoPublicContacts` | 🔜 Planned |
@@ -296,7 +321,7 @@ cp phpunit.live.xml.dist phpunit.live.xml   # git-ignored; put a test service us
 composer test:live
 ```
 
-With `RSGE_LIVE_WRITES=1` the suite also saves, activates, closes, cancels and deletes its own test waybills, from one test taxpayer to the other. Before anything else it asks rs.ge which taxpayer the service user belongs to, and stops unless that is one of the two test codes.
+With `RSGE_LIVE_WRITES=1` the suite also saves, activates, hands to a carrier, closes, cancels and deletes its own test waybills, from one test taxpayer to the other. Before anything else it asks rs.ge which taxpayer the service user belongs to, and stops unless that is one of the two test codes.
 
 ---
 

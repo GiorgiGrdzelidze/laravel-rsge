@@ -37,7 +37,8 @@ final class WaybillFilter
     }
 
     /**
-     * Parameters left out are sent as empty (nil) by the SOAP client.
+     * Parameters left out are sent as empty (nil) by the SOAP client. A list of statuses or of
+     * service users is read by rs.ge only inside commas (",0,8,"); written plainly it matches nothing.
      *
      * @return array<string, string>
      */
@@ -46,14 +47,22 @@ final class WaybillFilter
         return [
             'itypes' => implode(',', array_map(static fn (WaybillType $type): int => $type->value, $this->types)),
             'buyer_tin' => trim($this->buyerTin),
-            'statuses' => implode(',', array_map(static fn (WaybillStatus $status): int => $status->value, $this->statuses)),
+            'statuses' => self::between(array_map(static fn (WaybillStatus $status): int => $status->value, $this->statuses)),
             'car_number' => trim($this->carNumber),
             'create_date_s' => WaybillXml::date($this->createdFrom),
             'create_date_e' => WaybillXml::date($this->createdTo),
             'driver_tin' => trim($this->driverTin),
             'waybill_number' => trim($this->waybillNumber),
-            's_user_ids' => implode(',', array_map(static fn (int $id): string => (string) $id, $this->serviceUserIds)),
+            's_user_ids' => self::between(array_map(static fn (int $id): int => $id, $this->serviceUserIds)),
             'comment' => $this->comment,
         ];
+    }
+
+    /**
+     * @param  list<int>  $values
+     */
+    private static function between(array $values): string
+    {
+        return $values === [] ? '' : ','.implode(',', $values).',';
     }
 }

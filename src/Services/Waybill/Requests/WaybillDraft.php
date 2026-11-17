@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Rsge\Laravel\Services\Waybill\Requests;
 
 use Rsge\Laravel\Services\Waybill\Enums\TransportType;
+use Rsge\Laravel\Services\Waybill\Enums\WaybillStatus;
 use Rsge\Laravel\Services\Waybill\Enums\WaybillType;
 use Rsge\Laravel\Support\WaybillXml;
 use Rsge\Laravel\Support\XmlNode;
@@ -14,6 +15,11 @@ use Rsge\Laravel\Support\XmlNode;
  *
  * rs.ge checks the rest itself and answers with its error codes; only what would make
  * the request meaningless is refused here.
+ *
+ * A waybill for a carrier company (handedToCarrier) is stored as "sent to the carrier": the
+ * carrier puts its driver and car on it and starts the transport, and only then does rs.ge
+ * give it a number. It is never activated by the seller. Without handedToCarrier the carrier
+ * is only named: the waybill is saved like any other, and activating it starts it with no driver.
  */
 final class WaybillDraft
 {
@@ -26,6 +32,7 @@ final class WaybillDraft
      * @param  bool  $buyerIsResident  CHEK_BUYER_TIN: true for a Georgian citizen or company, false for a foreigner.
      * @param  ?string  $transportText  Required by rs.ge when the transport type is "other".
      * @param  int  $id  0 for a new waybill.
+     * @param  bool  $handedToCarrier  Store it as sent to the carrier named by $transporterTin (status 8).
      */
     public function __construct(
         public readonly WaybillType $type,
@@ -50,6 +57,7 @@ final class WaybillDraft
         public readonly string $transporterTin = '',
         public readonly ?int $parentId = null,
         public readonly int $id = 0,
+        public readonly bool $handedToCarrier = false,
     ) {
         foreach ($goods as $line) {
             if (! $line instanceof GoodsLine) {
@@ -60,6 +68,30 @@ final class WaybillDraft
             throw new \InvalidArgumentException('The transport cost is paid by the buyer (1) or the seller (2).');
         }
         WaybillXml::number($transportCost);
+        if ($handedToCarrier) {
+            $this->assertFitForACarrier();
+        }
+    }
+
+    /**
+     * What rs.ge refuses for a waybill sent to a carrier. Seen on the live service: no transport
+     * type (-1002), no carrier (-1050). From rs.ge's list of codes: another waybill type (-1062),
+     * a driver or a car of the seller's own (-1053).
+     */
+    private function assertFitForACarrier(): void
+    {
+        if (! in_array($this->type, [WaybillType::WithTransport, WaybillType::Internal], true)) {
+            throw new \InvalidArgumentException('Only a waybill with transport or an internal one can be handed to a carrier.');
+        }
+        if ($this->transportType !== TransportType::Carrier) {
+            throw new \InvalidArgumentException('A waybill handed to a carrier has the transport type "carrier".');
+        }
+        if (trim($this->transporterTin) === '') {
+            throw new \InvalidArgumentException('A waybill handed to a carrier needs the carrier\'s tax id.');
+        }
+        if (trim($this->driverTin) !== '' || trim($this->driverName) !== '' || trim($this->carNumber) !== '') {
+            throw new \InvalidArgumentException('The driver and the car of a waybill handed to a carrier are filled in by the carrier.');
+        }
     }
 
     /**
@@ -106,7 +138,7 @@ final class WaybillDraft
             'RECEPTION_INFO' => $this->receptionInfo,
             'RECEIVER_INFO' => $this->receiverInfo,
             'DELIVERY_DATE' => null,
-            'STATUS' => 0,
+            'STATUS' => $this->handedToCarrier ? WaybillStatus::SentToTransporter->value : WaybillStatus::Saved->value,
             'SELER_UN_ID' => $sellerUnId,
             'PAR_ID' => $this->parentId,
             'FULL_AMOUNT' => $this->fullAmount(),

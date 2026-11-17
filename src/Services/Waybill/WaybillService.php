@@ -285,6 +285,9 @@ final class WaybillService implements Service
      * Activate a saved waybill and get its number. From here it cannot be deleted, only
      * cancelled, and the buyer sees it.
      *
+     * Not for a waybill handed to a carrier (WaybillDraft::$handedToCarrier): the carrier starts
+     * that one, and rs.ge refuses this call for it.
+     *
      * @param  ?\DateTimeInterface  $beginDate  Start the transport later; rs.ge allows at most 3 days.
      * @return string The waybill number.
      *
@@ -346,7 +349,11 @@ final class WaybillService implements Service
     }
 
     /**
-     * Cancel an activated waybill. It stays on rs.ge as cancelled.
+     * Cancel an activated waybill, or one that is with a carrier. It stays on rs.ge as cancelled.
+     *
+     * For a waybill that is with a carrier rs.ge answers the call that carries a comment with 0
+     * and changes nothing; such a waybill is then cancelled without the comment, and the comment
+     * is not kept anywhere.
      *
      * @throws RsgeAuthenticationException
      * @throws RsgeWaybillException
@@ -360,7 +367,17 @@ final class WaybillService implements Service
             return;
         }
 
-        $this->done('ref_waybill_vd', ['waybill_id' => $waybillId, 'comment' => $comment]);
+        $result = $this->scalar('ref_waybill_vd', $this->auth() + ['waybill_id' => $waybillId, 'comment' => $comment]);
+        // only rs.ge's own 0: an answer that cannot be read is an error, as everywhere else
+        if ($result !== null && is_numeric($result) && (int) $result === 0) {
+            $this->done('ref_waybill', ['waybill_id' => $waybillId]);
+
+            return;
+        }
+        $code = $result !== null && is_numeric($result) ? (int) $result : 0;
+        if ($code !== 1) {
+            throw WaybillErrors::exception('ref_waybill_vd', $code);
+        }
     }
 
     /**

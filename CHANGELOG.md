@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0-beta.2] - 2026-11-17
+
+### Added
+
+- A waybill for a carrier company: `WaybillDraft::$handedToCarrier` stores the waybill as sent to the carrier named by `$transporterTin` (status 8, transport type `Carrier`, no driver and no car). The carrier puts its driver and car on it and starts the transport; only then does rs.ge give the waybill a number, so `get()` is asked again later for it. A draft that could not be handed over (another waybill type or transport type, no carrier, a driver or car of the seller's own) is refused before anything is sent.
+
+### Fixed
+
+- `WaybillFilter`: the `statuses` and `serviceUserIds` filters are sent the way rs.ge reads them. Until now a list narrowed by either came back empty.
+
+### Changed
+
+- `cancel()` with a comment: when rs.ge answers `ref_waybill_vd` with 0 and changes nothing, as it does for a waybill that is with a carrier, the waybill is cancelled with `ref_waybill` and the comment is dropped. A test that fakes the answer 0 has to queue the answer of the second call too.
+
+### Notes from the live service (2026-11-17, rs.ge's test taxpayers)
+
+- There is no call by which a seller sends a saved waybill to a carrier: `save_waybill` with `STATUS` 8 is the hand-over. `send_waybill` on a waybill that only names a carrier activates it without a driver, and `send_waybill_transporter` belongs to the carrier (the seller gets -1019).
+- While the waybill is with the carrier the seller can save it again (same id, `STATUS` 8 again) and cancel it; `send_waybill` answers -1, `close_waybill` -1018, `del_waybill` 0.
+- rs.ge's refusals for such a waybill: -1002 without the transport type, -1012 with a transport type other than the carrier's and no driver, -1048 for a tax id that is no taxpayer's, -1050 without one, -1011 without the end address.
+- `get_waybills` reads a list of statuses or of service users only inside commas (`,0,8,`); written plainly the filter matched nothing.
+- A second `del_waybill` on a deleted waybill answers like the first; `send_waybill` on a waybill without goods answers -1.
+- `send_waybill`, `ref_waybill`, `ref_waybill_vd`, `close_waybill` and `get_print_pdf` have now been run against rs.ge. `ref_waybill_vd` on an active waybill answers 1 and rs.ge keeps its comment.
+
 ## [1.1.0-beta.1] - 2026-11-15
 
 A pre-release: the read side of the waybill service was run against rs.ge, the write side beyond `save_waybill` / `del_waybill` was not (see the notes below).
@@ -52,5 +75,7 @@ A pre-release: the read side of the waybill service was run against rs.ge, the w
 - Unit tests (>30) and Testbench integration tests (5).
 - PHPStan level max, Laravel Pint, GitHub Actions CI (PHP 8.2 / 8.3 / 8.4).
 
-[Unreleased]: https://github.com/GiorgiGrdzelidze/laravel-rsge/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/GiorgiGrdzelidze/laravel-rsge/compare/v1.1.0-beta.2...HEAD
+[1.1.0-beta.2]: https://github.com/GiorgiGrdzelidze/laravel-rsge/compare/v1.1.0-beta.1...v1.1.0-beta.2
+[1.1.0-beta.1]: https://github.com/GiorgiGrdzelidze/laravel-rsge/compare/v1.0.0...v1.1.0-beta.1
 [1.0.0]: https://github.com/GiorgiGrdzelidze/laravel-rsge/releases/tag/v1.0.0

@@ -23,8 +23,9 @@ use Rsge\Laravel\Transport\SoapTransport;
  * taxpayers. Run with `composer test:live` (see phpunit.live.xml.dist).
  *
  * The write tests touch only waybills they create themselves, from one test taxpayer to
- * the other. Saved ones are deleted and activated ones cancelled, except the one waybill
- * whose test is to close it: that one stays on the test taxpayer, closed.
+ * the other. Saved ones are deleted, activated ones and the one handed to a carrier are
+ * cancelled, except the one waybill whose test is to close it: that one stays on the test
+ * taxpayer, closed.
  */
 final class WaybillLiveTest extends TestCase
 {
@@ -78,13 +79,13 @@ final class WaybillLiveTest extends TestCase
 
     protected function tearDown(): void
     {
-        // whatever a failed test left behind is taken off: a saved waybill is deleted, an active one cancelled
+        // whatever a failed test left behind is taken off: a saved waybill is deleted, an active one or one with a carrier cancelled
         foreach ($this->created as $id) {
             try {
                 $status = $this->service->get($id)->statusId;
                 if ($status === WaybillStatus::Saved->value) {
                     $this->service->delete($id);
-                } elseif ($status === WaybillStatus::Active->value) {
+                } elseif ($status === WaybillStatus::Active->value || $status === WaybillStatus::SentToTransporter->value) {
                     $this->service->cancel($id, 'laravel-rsge live test cleanup');
                 }
             } catch (\Throwable) {
@@ -227,12 +228,9 @@ final class WaybillLiveTest extends TestCase
         $this->service->delete($id);
 
         $this->assertSame(WaybillStatus::Deleted, $this->service->get($id)->status());
-        try {
-            $this->service->delete($id);
-            $this->fail('a deleted waybill was deleted again');
-        } catch (RsgeWaybillException $e) {
-            $this->assertNotSame(1, $e->errorCode);
-        }
+        // rs.ge answers a second delete like the first, and the waybill stays deleted
+        $this->service->delete($id);
+        $this->assertSame(WaybillStatus::Deleted, $this->service->get($id)->status());
     }
 
     #[Test]
@@ -261,6 +259,56 @@ final class WaybillLiveTest extends TestCase
             $this->fail('an active waybill was deleted');
         } catch (RsgeWaybillException $e) {
             $this->assertNotSame(1, $e->errorCode);
+        }
+
+        $this->service->cancel($id, 'laravel-rsge cancelled '.$mark);
+
+        // rs.ge keeps the reason of the call that carries one: the plain call would have left the comment as it was
+        $cancelled = $this->service->get($id);
+        $this->assertSame([WaybillStatus::Cancelled, 'laravel-rsge cancelled '.$mark], [$cancelled->status(), $cancelled->comment]);
+    }
+
+    #[Test]
+    public function a_waybill_handed_to_a_carrier_waits_there_without_a_number_and_is_cancelled_by_the_seller(): void
+    {
+        $this->writesAllowed();
+        $serviceUserId = (int) $this->service->checkServiceUser()->serviceUserId;
+        $mark = 'laravel-rsge carrier '.bin2hex(random_bytes(4));
+
+        // the other test taxpayer is the buyer and the carrier at once
+        $id = $this->save(new WaybillDraft(
+            type: WaybillType::WithTransport,
+            goods: [new GoodsLine(name: 'ფანქარი HB (laravel-rsge test)', quantity: 2, price: 1.5, amount: 3, barCode: '02345678')],
+            buyerTin: $this->buyerTin,
+            buyerName: 'სატესტო',
+            startAddress: 'თბილისი, ტესტის 1',
+            endAddress: 'ბათუმი, ტესტის 2',
+            transportType: TransportType::Carrier,
+            comment: $mark,
+            transporterTin: $this->buyerTin,
+            handedToCarrier: true,
+        ));
+        $withCarrier = $this->service->get($id);
+
+        $this->assertSame(WaybillStatus::SentToTransporter, $withCarrier->status());
+        $this->assertNull($withCarrier->number, 'the number comes when the carrier starts the transport');
+        $this->assertSame([$this->buyerTin, '7', ''], [$withCarrier->raw['TRANSPORTER_TIN'] ?? null, $withCarrier->raw['TRANS_ID'] ?? null, $withCarrier->raw['DRIVER_TIN'] ?? null]);
+
+        $now = $this->service->serverTime();
+        $window = [$now->modify('-1 hour'), $now->modify('+5 minutes')];
+        $listed = fn (array $statuses): array => $this->service->list(new WaybillFilter(...$window, statuses: $statuses, serviceUserIds: [$serviceUserId], comment: $mark))->pluck('id')->all();
+        $this->assertSame([$id], $listed([]), 'the list finds it by its comment and its service user');
+        $this->assertSame([$id], $listed([WaybillStatus::Saved, WaybillStatus::SentToTransporter]));
+        $this->assertSame([], $listed([WaybillStatus::Saved, WaybillStatus::Active]));
+
+        // the seller neither starts nor deletes it: only the carrier starts, and the seller may cancel
+        foreach (['activate', 'delete'] as $call) {
+            try {
+                $this->service->{$call}($id);
+                $this->fail("the seller could {$call} a waybill that is with a carrier");
+            } catch (RsgeWaybillException) {
+                $this->assertSame(WaybillStatus::SentToTransporter, $this->service->get($id)->status());
+            }
         }
 
         $this->service->cancel($id, 'laravel-rsge live test');
@@ -312,8 +360,10 @@ final class WaybillLiveTest extends TestCase
             $this->service->activate($empty);
             $this->fail('an empty waybill was activated');
         } catch (RsgeWaybillException $e) {
-            $this->assertSame(-1045, $e->errorCode);
+            // rs.ge's list has -1045 for a waybill without goods; send_waybill itself answers -1
+            $this->assertSame(-1, $e->errorCode);
         }
+        $this->assertSame(WaybillStatus::Saved, $this->service->get($empty)->status());
         $this->service->delete($empty);
     }
 }

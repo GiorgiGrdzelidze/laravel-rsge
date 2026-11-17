@@ -93,7 +93,7 @@ final class SoapTransportXmlTest extends TestCase
             '<ns1:get_waybills><ns1:su>SHOP_ONE:12345678910</ns1:su><ns1:sp>se&lt;cr&gt;et&amp;</ns1:sp><ns1:itypes></ns1:itypes><ns1:buyer_tin></ns1:buyer_tin><ns1:statuses></ns1:statuses><ns1:car_number></ns1:car_number>'
             .'<ns1:begin_date_s xsi:nil="true"/><ns1:begin_date_e xsi:nil="true"/><ns1:create_date_s>2026-11-13T00:00:00</ns1:create_date_s><ns1:create_date_e>2026-11-15T23:59:59</ns1:create_date_e><ns1:driver_tin></ns1:driver_tin>'
             .'<ns1:delivery_date_s xsi:nil="true"/><ns1:delivery_date_e xsi:nil="true"/><ns1:full_amount xsi:nil="true"/><ns1:waybill_number></ns1:waybill_number><ns1:close_date_s xsi:nil="true"/><ns1:close_date_e xsi:nil="true"/>'
-            .'<ns1:s_user_ids>382402</ns1:s_user_ids><ns1:comment></ns1:comment></ns1:get_waybills>',
+            .'<ns1:s_user_ids>,382402,</ns1:s_user_ids><ns1:comment></ns1:comment></ns1:get_waybills>',
             $this->client->body(),
         );
         $this->assertCount(2, $waybills);

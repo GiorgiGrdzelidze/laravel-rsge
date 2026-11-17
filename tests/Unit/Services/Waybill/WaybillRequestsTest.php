@@ -112,6 +112,51 @@ final class WaybillRequestsTest extends TestCase
     }
 
     #[Test]
+    public function a_waybill_handed_to_a_carrier_is_stored_as_sent_to_it_with_no_driver_and_no_car(): void
+    {
+        $carrier = fn (array $over = []): WaybillDraft => new WaybillDraft(...($over + [
+            'type' => WaybillType::WithTransport,
+            'goods' => [new GoodsLine(name: 'ა', quantity: 1, price: 2, amount: 2)],
+            'buyerTin' => '01001011111',
+            'startAddress' => 'თბილისი',
+            'endAddress' => 'ბათუმი',
+            'transportType' => TransportType::Carrier,
+            'transporterTin' => ' 206322102 ',
+            'handedToCarrier' => true,
+        ]));
+
+        $tags = $this->tags($carrier()->toXml(1149251));
+        $expected = ['TYPE' => '2', 'STATUS' => '8', 'TRANS_ID' => '7', 'TRANSPORTER_TIN' => '206322102', 'DRIVER_TIN' => '', 'CHEK_DRIVER_TIN' => '', 'DRIVER_NAME' => '', 'CAR_NUMBER' => '', 'END_ADDRESS' => 'ბათუმი'];
+        foreach ($expected as $tag => $value) {
+            $this->assertSame($value, $tags[$tag] ?? null, $tag);
+        }
+        $this->assertSame('8', $this->tags($carrier(['type' => WaybillType::Internal])->toXml(1))['STATUS']);
+        // the same waybill only saved names the carrier and stays the seller's to send
+        $this->assertSame('0', $this->tags($carrier(['handedToCarrier' => false])->toXml(1))['STATUS']);
+
+        $refused = [
+            'a waybill without transport' => ['type' => WaybillType::WithoutTransport],
+            'a distribution waybill' => ['type' => WaybillType::Distribution],
+            'a return' => ['type' => WaybillType::Return],
+            'a sub-waybill' => ['type' => WaybillType::SubWaybill],
+            'another transport type' => ['transportType' => TransportType::Road],
+            'no transport type' => ['transportType' => null],
+            'no carrier' => ['transporterTin' => '  '],
+            'a driver' => ['driverTin' => '01001011111'],
+            'a driver by name' => ['driverName' => 'მძღოლი'],
+            'a car' => ['carNumber' => 'AA123AA'],
+        ];
+        foreach ($refused as $what => $over) {
+            try {
+                $carrier($over);
+                $this->fail("handed to a carrier with {$what}");
+            } catch (\InvalidArgumentException $e) {
+                $this->assertNotSame('', $e->getMessage());
+            }
+        }
+    }
+
+    #[Test]
     public function a_waybill_without_its_own_start_date_starts_now_in_tbilisi_time(): void
     {
         $before = new \DateTimeImmutable('now', new \DateTimeZone('Asia/Tbilisi'));
@@ -242,7 +287,7 @@ final class WaybillRequestsTest extends TestCase
         $filter = new WaybillFilter(new \DateTimeImmutable('2026-11-15 10:00:00', new \DateTimeZone('Asia/Tbilisi')), new \DateTimeImmutable('2026-11-15 10:00:00', new \DateTimeZone('Asia/Tbilisi')), statuses: [WaybillStatus::Saved], buyerTin: ' 206322102 ', waybillNumber: ' 1021416743 ', carNumber: ' AA123AA ', driverTin: ' 1 ');
 
         $this->assertSame([
-            'itypes' => '', 'buyer_tin' => '206322102', 'statuses' => '0', 'car_number' => 'AA123AA', 'create_date_s' => '2026-11-15T10:00:00', 'create_date_e' => '2026-11-15T10:00:00',
+            'itypes' => '', 'buyer_tin' => '206322102', 'statuses' => ',0,', 'car_number' => 'AA123AA', 'create_date_s' => '2026-11-15T10:00:00', 'create_date_e' => '2026-11-15T10:00:00',
             'driver_tin' => '1', 'waybill_number' => '1021416743', 's_user_ids' => '', 'comment' => '',
         ], $filter->toSoap());
 
