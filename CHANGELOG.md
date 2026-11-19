@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0-beta.3] - 2026-11-19
+
+### Fixed
+
+- `WaybillService::nameFromTin()` returns null for a number nobody is registered under. rs.ge answers `get_name_from_tin` for such a number with the text `null`, and until now that text came back as the name.
+
+### Notes from the live service (2026-11-19)
+
+- `get_name_from_tin` answers in about 0.3 s. The name comes without its legal form: `402039049` is `ნიკე - თანამედროვე ხელოვნების განვითარებისათვის`.
+
 ## [1.1.0-beta.2] - 2026-11-17
 
 ### Added

@@ -210,6 +210,7 @@ final class WaybillService implements Service
 
     /**
      * The registered name behind an identification number, or null when rs.ge has none.
+     * For a number nobody is registered under rs.ge answers with the text "null".
      *
      * @throws RsgeTransportException
      */
@@ -220,7 +221,7 @@ final class WaybillService implements Service
             throw WaybillErrors::exception('get_name_from_tin', (int) $name);
         }
 
-        return $name === '' ? null : $name;
+        return $name === '' || strcasecmp($name, 'null') === 0 ? null : $name;
     }
 
     // ------------------------------------------------------------------

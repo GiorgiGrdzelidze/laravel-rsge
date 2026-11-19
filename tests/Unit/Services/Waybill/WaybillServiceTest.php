@@ -480,6 +480,10 @@ final class WaybillServiceTest extends TestCase
         $this->transport->push((object) ['get_server_timeResult' => '2026-11-15T13:18:05']);
         $this->transport->push((object) ['get_name_from_tinResult' => 'სატესტო კოდი1']);
         $this->transport->push((object) ['get_name_from_tinResult' => '']);
+        // what rs.ge answers for a number nobody is registered under (seen 2026-11-19)
+        $this->transport->push((object) ['get_name_from_tinResult' => 'null']);
+        $this->transport->push((object) ['get_name_from_tinResult' => ' NULL ']);
+        $this->transport->push((object) ['get_name_from_tinResult' => 'Null & Sons']);
         $this->transport->push((object) ['get_print_pdfResult' => "%PDF-1.4\nbytes"]);
         $this->transport->push((object) ['get_print_pdfResult' => '']);
         $this->transport->push((object) ['get_server_timeResult' => 'not a time']);
@@ -488,11 +492,14 @@ final class WaybillServiceTest extends TestCase
         $this->assertSame('2026-11-15 13:18:05', $this->service->serverTime()->format('Y-m-d H:i:s'));
         $this->assertSame('სატესტო კოდი1', $this->service->nameFromTin(' 206322102 '));
         $this->assertNull($this->service->nameFromTin('000'));
+        $this->assertNull($this->service->nameFromTin('499999999'));
+        $this->assertNull($this->service->nameFromTin('499999999'));
+        $this->assertSame('Null & Sons', $this->service->nameFromTin('404000111'));
         $this->assertSame("%PDF-1.4\nbytes", $this->service->printPdf(7));
 
         $calls = $this->transport->calls();
         $this->assertSame([[], [], self::AUTH + ['tin' => '206322102']], [$calls[0]['parameters'], $calls[1]['parameters'], $calls[2]['parameters']]);
-        $this->assertSame(self::AUTH + ['waybill_id' => 7], $calls[4]['parameters']);
+        $this->assertSame(self::AUTH + ['waybill_id' => 7], $calls[7]['parameters']);
 
         foreach (['printPdf' => [7], 'serverTime' => []] as $method => $arguments) {
             try {
