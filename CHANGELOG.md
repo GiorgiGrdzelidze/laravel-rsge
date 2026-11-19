@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- README: a company's name from `nameFromTin()` comes sometimes with its legal form and sometimes without (seen on rs.ge 2026-11-20); the earlier text said "without".
+
 ## [1.1.0-beta.4] - 2026-11-20
 
 ### Fixed

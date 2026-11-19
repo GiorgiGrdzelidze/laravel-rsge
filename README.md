@@ -185,7 +185,7 @@ $waybills->nameFromTin('206322102');   // 'სატესტო კოდი1'
 $waybills->nameFromTin('499999999');   // null: nobody is registered under it
 ```
 
-- A company's name comes in full, without its legal form (შპს, სს …). A person's name may come shortened, so it is something to hold a typed name against, not a name to store.
+- A company's name comes in full, sometimes with its legal form (შპს, სს …) and sometimes without it. A person's name may come shortened, so it is something to hold a typed name against, not a name to store.
 - For a number nobody has, rs.ge answers with the text `null`; the package returns `null`.
 - rs.ge gives a service user it does not accept that very same answer, with no error code. So before "nobody" is returned the service user is checked with `chek_service_user`, and a refused one is an `RsgeAuthenticationException`, as everywhere else. That is one more call, and only for such answers.
 - The answer takes a fraction of a second. Where the caller is a person waiting at a screen, give connecting a short limit as well: PHP's `default_socket_timeout` bounds only the wait for the answer, while connecting follows `connection_timeout` in `rsge.endpoints.waybill.soap_options` (30 seconds by default).
