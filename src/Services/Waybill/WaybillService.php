@@ -212,6 +212,11 @@ final class WaybillService implements Service
      * The registered name behind an identification number, or null when rs.ge has none.
      * For a number nobody is registered under rs.ge answers with the text "null".
      *
+     * rs.ge answers a service user it does not accept in the very same way, without an error
+     * code. So "nobody" is believed only once chek_service_user has accepted the service user;
+     * a refused one is an exception here, as it is everywhere else.
+     *
+     * @throws RsgeAuthenticationException
      * @throws RsgeTransportException
      */
     public function nameFromTin(string $tin): ?string
@@ -220,8 +225,14 @@ final class WaybillService implements Service
         if (preg_match('/^-\d+$/', $name) === 1) {
             throw WaybillErrors::exception('get_name_from_tin', (int) $name);
         }
+        if ($name !== '' && strcasecmp($name, 'null') !== 0) {
+            return $name;
+        }
+        if (! $this->checkServiceUser()->valid) {
+            throw WaybillErrors::exception('get_name_from_tin', WaybillErrors::WRONG_SERVICE_USER);
+        }
 
-        return $name === '' || strcasecmp($name, 'null') === 0 ? null : $name;
+        return null;
     }
 
     // ------------------------------------------------------------------

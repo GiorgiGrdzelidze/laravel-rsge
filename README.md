@@ -41,6 +41,12 @@
 composer require giorgigrdzelidze/laravel-rsge
 ```
 
+The waybill service is in the 1.1 pre-releases; Composer installs one only when it is asked for by name:
+
+```bash
+composer require giorgigrdzelidze/laravel-rsge:1.1.0-beta.4
+```
+
 Publish the config file (optional):
 
 ```bash
@@ -172,7 +178,19 @@ $asStaff = Rsge::waybill(new ServiceUserCredentials('NINO:206322102', $password)
 $check = $asStaff->checkServiceUser();       // valid, unId, serviceUserId
 ```
 
-Other operations: `serviceUsers($mainUser, $mainPassword)`, `list(WaybillFilter)`, `getByNumber()`, `types()`, `units()`, `transportTypes()`, `errorCodes()`, `nameFromTin()`, `whatIsMyIp()`, `serverTime()`.
+Whose identification number it is, as rs.ge has it registered:
+
+```php
+$waybills->nameFromTin('206322102');   // 'სატესტო კოდი1'
+$waybills->nameFromTin('499999999');   // null: nobody is registered under it
+```
+
+- A company's name comes in full, without its legal form (შპს, სს …). A person's name may come shortened, so it is something to hold a typed name against, not a name to store.
+- For a number nobody has, rs.ge answers with the text `null`; the package returns `null`.
+- rs.ge gives a service user it does not accept that very same answer, with no error code. So before "nobody" is returned the service user is checked with `chek_service_user`, and a refused one is an `RsgeAuthenticationException`, as everywhere else. That is one more call, and only for such answers.
+- The answer takes a fraction of a second. Where the caller is a person waiting at a screen, give connecting a short limit as well: PHP's `default_socket_timeout` bounds only the wait for the answer, while connecting follows `connection_timeout` in `rsge.endpoints.waybill.soap_options` (30 seconds by default).
+
+Other operations: `serviceUsers($mainUser, $mainPassword)`, `list(WaybillFilter)`, `getByNumber()`, `types()`, `units()`, `transportTypes()`, `errorCodes()`, `whatIsMyIp()`, `serverTime()`.
 
 What rs.ge or the network refuses is an `RsgeException` carrying rs.ge's code and its Georgian text where there is one (`errorCode`, `errorDescription`). Input the package itself cannot send — a name with nothing readable in it, a number that is not one — is an `\InvalidArgumentException` when the `GoodsLine` or `WaybillDraft` is made:
 
@@ -180,7 +198,7 @@ What rs.ge or the network refuses is an `RsgeException` carrying rs.ge's code an
 |-----------|------|
 | `RsgeWaybillException` | rs.ge refuses the operation with one of its codes; `lineErrors` names the goods lines at fault |
 | `RsgeUnreadMessageException` (a `RsgeWaybillException`) | a mandatory message on the portal has to be read first (`-1061`); rs.ge has no web-service call for it, someone has to open the portal |
-| `RsgeAuthenticationException` (not a `RsgeWaybillException`) | wrong service user or password (`-100`) |
+| `RsgeAuthenticationException` (not a `RsgeWaybillException`) | wrong service user or password (`-100`); also raised by `nameFromTin()`, where rs.ge itself reports no error for it |
 | `RsgeConfigurationException` | no service user is configured; nothing was sent |
 | `RsgeTransportException` | the call did not get through |
 
@@ -274,6 +292,7 @@ src/
 | Electronic waybills | `save_waybill`, `del_waybill`, `get_waybill`, `get_waybills`, `chek_service_user`, `get_service_users`, lists | ✅ Done, checked against rs.ge |
 | Electronic waybills | `send_waybill`, `close_waybill`, `ref_waybill`, `ref_waybill_vd`, `get_print_pdf`, a waybill handed to a carrier (`STATUS` 8) | ✅ Done, checked against rs.ge |
 | Electronic waybills | `send_waybil_vd`, `close_waybill_vd` | ✅ Done, live check pending |
+| Electronic waybills | `get_name_from_tin` | ✅ Done, checked against rs.ge |
 | Cash Register Z-Report Sum | `Get_Z_Report_Sum` | 🔜 Planned |
 | Taxpayer Public Info | `GetTPInfoPublic` | 🔜 Planned |
 | Taxpayer Public Contacts | `GetTPInfoPublicContacts` | 🔜 Planned |
@@ -320,6 +339,8 @@ composer test         # ✅ Tests (PHPUnit)
 cp phpunit.live.xml.dist phpunit.live.xml   # git-ignored; put a test service user in
 composer test:live
 ```
+
+The service user has to be one made on the portal under a test taxpayer (`NAME:TIN`). The two test main users printed in rs.ge's manual are for the portal and for `serviceUsers()`; rs.ge does not accept them as service users (`-100`).
 
 With `RSGE_LIVE_WRITES=1` the suite also saves, activates, hands to a carrier, closes, cancels and deletes its own test waybills, from one test taxpayer to the other. Before anything else it asks rs.ge which taxpayer the service user belongs to, and stops unless that is one of the two test codes.
 

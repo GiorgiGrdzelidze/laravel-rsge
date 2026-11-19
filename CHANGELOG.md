@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0-beta.4] - 2026-11-20
+
+### Fixed
+
+- `WaybillService::nameFromTin()` throws `RsgeAuthenticationException` (code -100) for a service user rs.ge does not accept. rs.ge answers `get_name_from_tin` for such a user without an error code, exactly as for a number nobody is registered under, so until now a wrong password read as "nobody has this number" for every number. When the answer is "nobody", the service user is now checked with `chek_service_user` first (one more call, only for such answers). A test that fakes a "nobody" answer has to queue the answer of that check too.
+
+### Notes from the live service (2026-11-20, rs.ge's test taxpayers)
+
+- The two published test main users are not accepted as service users: `chek_service_user` answers false and other calls answer -100.
+- `get_name_from_tin` with a wrong password: no error code, the same answer as for an unknown number, also for a number that is registered.
+
 ## [1.1.0-beta.3] - 2026-11-19
 
 ### Fixed

@@ -474,15 +474,34 @@ final class WaybillServiceTest extends TestCase
     }
 
     #[Test]
+    public function a_name_asked_for_by_a_refused_service_user_is_a_refusal_not_nobody(): void
+    {
+        // rs.ge sends a service user it does not accept the answer it sends for an unknown number
+        $this->transport->push((object) ['get_name_from_tinResult' => 'null']);
+        $this->transport->push((object) ['chek_service_userResult' => false, 'un_id' => -3, 's_user_id' => -3]);
+
+        try {
+            $this->service->nameFromTin('206322102');
+            $this->fail('A refused service user was told that nobody has the number.');
+        } catch (RsgeAuthenticationException $e) {
+            $this->assertSame(-100, $e->errorCode);
+            $this->assertStringContainsString('get_name_from_tin', $e->getMessage());
+        }
+        $this->assertSame(['get_name_from_tin', 'chek_service_user'], array_column($this->transport->calls(), 'method'));
+    }
+
+    #[Test]
     public function small_answers_are_read(): void
     {
         $this->transport->push((object) ['what_is_my_ipResult' => '203.0.113.7']);
         $this->transport->push((object) ['get_server_timeResult' => '2026-11-15T13:18:05']);
         $this->transport->push((object) ['get_name_from_tinResult' => 'სატესტო კოდი1']);
-        $this->transport->push((object) ['get_name_from_tinResult' => '']);
+        // "nobody" is believed once the service user is known to be accepted: each such answer is followed by that check
+        $accepted = (object) ['chek_service_userResult' => true, 'un_id' => 1149251, 's_user_id' => 382402];
+        $this->transport->push((object) ['get_name_from_tinResult' => ''])->push($accepted);
         // what rs.ge answers for a number nobody is registered under (seen 2026-11-19)
-        $this->transport->push((object) ['get_name_from_tinResult' => 'null']);
-        $this->transport->push((object) ['get_name_from_tinResult' => ' NULL ']);
+        $this->transport->push((object) ['get_name_from_tinResult' => 'null'])->push($accepted);
+        $this->transport->push((object) ['get_name_from_tinResult' => ' NULL '])->push($accepted);
         $this->transport->push((object) ['get_name_from_tinResult' => 'Null & Sons']);
         $this->transport->push((object) ['get_print_pdfResult' => "%PDF-1.4\nbytes"]);
         $this->transport->push((object) ['get_print_pdfResult' => '']);
@@ -499,7 +518,8 @@ final class WaybillServiceTest extends TestCase
 
         $calls = $this->transport->calls();
         $this->assertSame([[], [], self::AUTH + ['tin' => '206322102']], [$calls[0]['parameters'], $calls[1]['parameters'], $calls[2]['parameters']]);
-        $this->assertSame(self::AUTH + ['waybill_id' => 7], $calls[7]['parameters']);
+        $this->assertSame(self::AUTH + ['waybill_id' => 7], $calls[10]['parameters']);
+        $this->assertSame(['get_name_from_tin', 'get_name_from_tin', 'chek_service_user', 'get_name_from_tin', 'chek_service_user', 'get_name_from_tin', 'chek_service_user', 'get_name_from_tin'], array_column(array_slice($calls, 2, 8), 'method'));
 
         foreach (['printPdf' => [7], 'serverTime' => []] as $method => $arguments) {
             try {

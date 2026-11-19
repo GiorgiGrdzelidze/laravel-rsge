@@ -157,6 +157,15 @@ final class WaybillLiveTest extends TestCase
         $wrong = $this->service->withCredentials(new ServiceUserCredentials((string) getenv('RSGE_LIVE_SU'), 'surely-not-the-password'));
 
         $this->assertFalse($wrong->checkServiceUser()->valid);
+        // a number nobody has is nobody's for an accepted service user, and a refusal for this one
+        $this->assertNull($this->service->nameFromTin('499999999'));
+        $this->assertNull($this->service->nameFromTin('01999999999'));
+        try {
+            $wrong->nameFromTin($this->buyerTin);
+            $this->fail('A refused service user was given an answer about a number.');
+        } catch (RsgeAuthenticationException $e) {
+            $this->assertSame(-100, $e->errorCode);
+        }
         $this->expectException(RsgeAuthenticationException::class);
         $wrong->types();
     }
